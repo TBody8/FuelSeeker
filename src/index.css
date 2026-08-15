@@ -1,0 +1,393 @@
+@import 'tailwindcss';
+@import 'leaflet/dist/leaflet.css';
+@import 'leaflet.markercluster/dist/MarkerCluster.css';
+@import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Space Grotesk', 'Manrope', ui-sans-serif, system-ui, sans-serif;
+
+  --color-canvas: #f4f6fa;
+  --color-surface: #ffffff;
+  --color-surface-2: #eef1f6;
+  --color-ink: #0f172a;
+  --color-ink-soft: #475569;
+  --color-ink-faint: #94a3b8;
+  --color-line: #e2e8f0;
+  --color-line-strong: #cbd5e1;
+  --color-accent: #059669;
+  --color-accent-strong: #047857;
+  --color-accent-soft: rgba(5, 150, 105, 0.12);
+  --color-danger: #dc2626;
+  --color-warning: #d97706;
+  --color-info: #2563eb;
+  --color-info-soft: rgba(37, 99, 235, 0.12);
+
+  --shadow-soft: 0 10px 40px -12px rgb(15 23 42 / 0.18);
+  --shadow-lift: 0 18px 50px -12px rgb(15 23 42 / 0.28);
+  --shadow-tight: 0 2px 8px -2px rgb(15 23 42 / 0.14);
+
+  --animate-shimmer: shimmer 1.6s infinite;
+  --animate-fade-up: fade-up 420ms var(--ease-out) both;
+  --animate-fade-in: fade-in 300ms var(--ease-out) both;
+  --animate-spin-slow: spin 1.2s linear infinite;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --z-base: 0;
+  --z-raised: 10;
+  --z-overlay: 20;
+  --z-drawer: 30;
+  --z-modal: 40;
+  --z-toast: 50;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@layer base {
+  html,
+  body {
+    overflow-x: clip;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .dark body {
+    background: #0b1220;
+    color: #e2e8f0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  .dark :focus-visible {
+    outline-color: #34d399;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@utility price-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+@utility glass {
+  background: rgb(255 255 255 / 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgb(15 23 42 / 0.08);
+  box-shadow: var(--shadow-soft);
+}
+
+.dark .glass {
+  background: rgb(15 23 42 / 0.7);
+  border-color: rgb(148 163 184 / 0.16);
+  box-shadow: 0 18px 50px -16px rgb(0 0 0 / 0.5);
+}
+
+@utility skeleton {
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgb(15 23 42 / 0.06) 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+  border-radius: 6px;
+}
+
+.dark .skeleton {
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgb(226 232 240 / 0.08) 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
+/* ---------- Leaflet overrides ---------- */
+
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: #dfe6ee;
+  height: 100%;
+  width: 100%;
+}
+
+.dark .leaflet-container {
+  background: #1e293b;
+}
+
+.dark .leaflet-tile {
+  filter: brightness(0.74) contrast(1.08) saturate(0.88);
+}
+
+.leaflet-control-attribution {
+  font-size: 9px;
+  background: rgb(255 255 255 / 0.8) !important;
+  color: var(--color-ink-faint);
+  backdrop-filter: blur(4px);
+}
+
+.dark .leaflet-control-attribution {
+  background: rgb(11 18 32 / 0.8) !important;
+  color: #64748b;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: var(--shadow-lift);
+  font-family: var(--font-sans);
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px;
+}
+
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+  background: #16213a;
+  color: #e2e8f0;
+}
+
+.leaflet-control-zoom a {
+  color: var(--color-ink) !important;
+}
+
+.dark .leaflet-control-zoom a {
+  background: #16213a !important;
+  color: #e2e8f0 !important;
+  border-color: rgb(148 163 184 / 0.2) !important;
+}
+
+/* Marker cluster: colores de marca */
+.marker-cluster-small,
+.marker-cluster-medium,
+.marker-cluster-large {
+  background-color: transparent;
+}
+
+.marker-cluster-small div,
+.marker-cluster-medium div,
+.marker-cluster-large div {
+  background: var(--color-accent);
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.marker-cluster-small div {
+  background: rgb(5 150 105 / 0.9);
+  width: 32px;
+  height: 32px;
+}
+
+.marker-cluster-medium div {
+  background: rgb(4 120 87 / 0.95);
+  width: 40px;
+  height: 40px;
+}
+
+.marker-cluster-large div {
+  background: rgb(15 23 42 / 0.95);
+  width: 48px;
+  height: 48px;
+}
+
+/* Scrollbars sutiles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- Cluster personalizado ---------- */
+
+.custom-cluster-icon {
+  background-color: transparent;
+  border: 0;
+}
+
+.custom-cluster-icon div {
+  background: var(--color-accent);
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 700;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-tight);
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Marcadores de estación ---------- */
+
+.station-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out);
+}
+
+.station-marker:hover {
+  transform: scale(1.1);
+  z-index: 1000 !important;
+}
+
+.station-marker::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  background: var(--marker-color);
+  opacity: 0.2;
+  border: 1.5px solid var(--marker-color);
+  transition: transform 180ms var(--ease-out), opacity 180ms var(--ease-out);
+}
+
+.station-marker__price {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--marker-color);
+  font-variant-numeric: tabular-nums;
+  background: #ffffff;
+  border: 1.5px solid var(--marker-color);
+  border-radius: 999px;
+  padding: 3px 6px;
+  box-shadow: var(--shadow-tight);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.dark .station-marker__price {
+  background: #0f172a;
+  color: #f8fafc;
+  border-color: var(--marker-color);
+  box-shadow: 0 4px 14px -2px rgb(0 0 0 / 0.6);
+}
+
+.station-marker--selected {
+  transform: scale(1.15);
+  z-index: 1001 !important;
+}
+
+.station-marker--selected::before {
+  transform: scale(1.24);
+  opacity: 0.45;
+}
+
+/* ---------- Marcador de ubicación del usuario ---------- */
+
+.user-location-marker {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.7);
+  position: relative;
+}
+
+.user-location-marker::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  border: 2.5px solid #3b82f6;
+  opacity: 0.8;
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
