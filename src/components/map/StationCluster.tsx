@@ -4,6 +4,7 @@ import 'leaflet.markercluster'
 import { useMap } from 'react-leaflet'
 import type { Station } from '../../types'
 import { buildStationIcon } from './stationIcon'
+import { escapeHtml } from '../../utils/security'
 
 interface StationClusterProps {
   stations: Station[]
@@ -95,8 +96,8 @@ export function StationCluster({
               ? '<span style="display:inline-block;font-size:10px;font-weight:700;background:rgba(217,119,6,0.18);color:#d97706;padding:2px 6px;border-radius:4px;margin-bottom:4px;">💳 Solo Socios Costco</span>'
               : ''
           }
-          <div style="font-weight:700;font-size:13px;">${station.brand}</div>
-          <div style="font-size:11px;opacity:0.75;margin-top:2px;">${station.address}</div>
+          <div style="font-weight:700;font-size:13px;">${escapeHtml(station.brand)}</div>
+          <div style="font-size:11px;opacity:0.75;margin-top:2px;">${escapeHtml(station.address)}</div>
           <div style="font-size:15px;font-weight:800;margin-top:6px;font-variant-numeric:tabular-nums;color:var(--color-accent);">${formattedPrice}/L</div>
           ${
             isCostco

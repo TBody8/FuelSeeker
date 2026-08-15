@@ -8,17 +8,30 @@ export interface UseGeolocationResult extends GeolocationState {
   retry: () => void
 }
 
+function isValidCoordinates(lat: unknown, lng: unknown): boolean {
+  return (
+    typeof lat === 'number' &&
+    typeof lng === 'number' &&
+    !Number.isNaN(lat) &&
+    !Number.isNaN(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  )
+}
+
 async function fetchIpLocation(): Promise<Coordinates | null> {
   try {
     const res = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(3000) })
     if (res.ok) {
-      const data = await res.json() as { latitude?: number; longitude?: number }
-      if (typeof data.latitude === 'number' && typeof data.longitude === 'number') {
-        return { lat: data.latitude, lng: data.longitude }
+      const data = (await res.json()) as { latitude?: number; longitude?: number }
+      if (isValidCoordinates(data.latitude, data.longitude)) {
+        return { lat: data.latitude as number, lng: data.longitude as number }
       }
     }
   } catch {
-    // fallback secundario
+    // Fallback seguro a centro predeterminado
   }
   return null
 }
