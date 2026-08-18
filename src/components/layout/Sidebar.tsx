@@ -11,6 +11,8 @@ interface SidebarProps {
   loadingMunicipalities: boolean
   selectedProvince: number | null
   selectedMunicipality: number | null
+  userHomeProvinceId?: number | null
+  isUserNearby?: boolean
   onProvinceChange: (provinceId: number | null) => void
   onMunicipalityChange: (municipalityId: number | null) => void
   fuelType: FuelType
@@ -33,6 +35,8 @@ export function Sidebar({
   loadingMunicipalities,
   selectedProvince,
   selectedMunicipality,
+  userHomeProvinceId,
+  isUserNearby = false,
   onProvinceChange,
   onMunicipalityChange,
   fuelType,
@@ -48,6 +52,7 @@ export function Sidebar({
   renderHistory,
 }: SidebarProps) {
   const isNationwide = selectedProvince === null
+  const currentProvinceName = provinces.find((p) => p.id === selectedProvince)?.name
 
   return (
     <div className="flex h-full flex-col">
@@ -60,6 +65,7 @@ export function Sidebar({
           loadingMunicipalities={loadingMunicipalities}
           selectedProvince={selectedProvince}
           selectedMunicipality={selectedMunicipality}
+          userHomeProvinceId={userHomeProvinceId}
           onProvinceChange={onProvinceChange}
           onMunicipalityChange={onMunicipalityChange}
         />
@@ -83,7 +89,7 @@ export function Sidebar({
               <TrendingDown size={13} className="text-accent" aria-hidden="true" />
               {count > 0 ? (
                 <span>
-                  {count} {count === 1 ? 'gasolinera' : 'gasolineras'} · de más barata a más cara
+                  {count} {count === 1 ? 'gasolinera' : 'gasolineras'} {isUserNearby ? 'cerca de ti' : currentProvinceName ? `en ${currentProvinceName}` : ''} · de más barata a más cara
                 </span>
               ) : (
                 <span>Sin resultados en el radio</span>

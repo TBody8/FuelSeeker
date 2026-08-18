@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { Coordinates, FuelType, Station } from '../../types'
@@ -18,11 +18,13 @@ function LocateControl({
   userCoords,
   loading,
   permissionDenied,
+  onLocate,
   onRetry,
 }: {
   userCoords: Coordinates | null
   loading: boolean
   permissionDenied: boolean
+  onLocate?: () => void
   onRetry?: () => void
 }) {
   const map = useMap()
@@ -30,6 +32,7 @@ function LocateControl({
   const handleLocate = () => {
     if (userCoords) {
       map.flyTo([userCoords.lat, userCoords.lng], 14, { duration: 0.8 })
+      onLocate?.()
     }
   }
 
@@ -48,6 +51,29 @@ function LocateControl({
   )
 }
 
+function FlyToStation({ station }: { station: Station | null }) {
+  const map = useMap()
+  const prevIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!station) {
+      prevIdRef.current = null
+      return
+    }
+    if (station.id !== prevIdRef.current) {
+      prevIdRef.current = station.id
+      const currentZoom = map.getZoom()
+      const targetZoom = currentZoom < 14 ? 14 : currentZoom
+      map.flyTo([station.lat, station.lng], targetZoom, {
+        duration: 0.8,
+        easeLinearity: 0.25,
+      })
+    }
+  }, [station, map])
+
+  return null
+}
+
 interface MapViewProps {
   center: Coordinates
   stations: Station[]
@@ -62,6 +88,7 @@ interface MapViewProps {
   loadingLocation?: boolean
   permissionDenied?: boolean
   onRetryLocation?: () => void
+  onLocateMe?: () => void
   onSelectStation: (station: Station) => void
 }
 
@@ -79,6 +106,7 @@ export function MapView({
   loadingLocation = false,
   permissionDenied = false,
   onRetryLocation,
+  onLocateMe,
   onSelectStation,
 }: MapViewProps) {
   // Rango de precios del mercado actual (contexto para colorear marcadores).
@@ -92,6 +120,11 @@ export function MapView({
       max: Math.max(...prices),
     }
   }, [stations, fuelType])
+
+  const selectedStation = useMemo(
+    () => stations.find((s) => s.id === selectedStationId) ?? null,
+    [stations, selectedStationId],
+  )
 
   const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 
@@ -114,12 +147,15 @@ export function MapView({
         userCoords={userCoords ?? null}
         loading={loadingLocation}
         permissionDenied={permissionDenied}
+        onLocate={onLocateMe}
         onRetry={onRetryLocation}
       />
 
       {flyCounter > 0 ? (
         <FlyToCenter center={center} counter={flyCounter} zoom={targetZoom} />
       ) : null}
+
+      <FlyToStation station={selectedStation} />
 
       {showRadius && radiusKm > 0 ? (
         <RadiusCircle center={[center.lat, center.lng]} radiusKm={radiusKm} />

@@ -1,10 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { Activity, ChevronRight, Fuel, List, X } from 'lucide-react'
+import { Activity, ChevronRight, Fuel, List } from 'lucide-react'
 import { Header } from './components/layout/Header'
 import { MobileDrawer } from './components/layout/MobileDrawer'
 import { Sidebar } from './components/layout/Sidebar'
 import { RadiusSlider } from './components/controls/RadiusSlider'
 import { NationalPriceWidget } from './components/charts/NationalPriceWidget'
+import { NationalMobileModal } from './components/charts/NationalMobileModal'
+import { InitialLoadingScreen } from './components/ui/InitialLoadingScreen'
 import { useTheme } from './hooks/useTheme'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useLocations } from './hooks/useLocations'
@@ -83,12 +85,20 @@ export default function App() {
 
   const { stations, loading, error } = useStations(locations.selectedProvince)
 
-  // Auto-selección inicial solo si el usuario no tiene una provincia previamente guardada
+  // Provincia detectada como natal / más cercana a través del GPS
+  const userHomeProvince = useMemo(() => {
+    if (!geo.coords || locations.provinces.length === 0) return null
+    const name = nearestProvinceName(geo.coords, PROVINCE_CENTERS)
+    if (!name) return null
+    return locations.provinces.find((p) => p.name === name) ?? null
+  }, [geo.coords, locations.provinces])
+
+  // Auto-selección inicial por ubicación: detecta la provincia del usuario por GPS y la selecciona
   useEffect(() => {
     const hasSavedPreference = localStorage.getItem('gasolineras_user_province') !== null
     if (hasSavedPreference) return
     if (locations.selectedProvince !== null) return
-    if (geo.loading || geo.permissionDenied) return
+    if (geo.loading || geo.permissionDenied || !geo.coords) return
     if (locations.provinces.length === 0) return
 
     const name = nearestProvinceName(geo.coords, PROVINCE_CENTERS)
@@ -98,10 +108,19 @@ export default function App() {
 
     locations.selectProvince(province.id)
     setFlyCounter((n) => n + 1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geo.loading, geo.permissionDenied, locations.selectedProvince, locations.provinces])
+  }, [geo.loading, geo.permissionDenied, geo.coords, locations.selectedProvince, locations.provinces, locations])
 
-  // Centro de búsqueda y zoom: centrado exactamente en la persona (GPS) tipo Wallapop
+  // Determina si el usuario está explorando "Cerca de mí" o una provincia/municipio concreto
+  const isUserNearby = useMemo(() => {
+    return (
+      hasUserLocation &&
+      userHomeProvince !== null &&
+      locations.selectedProvince === userHomeProvince.id &&
+      locations.selectedMunicipality === null
+    )
+  }, [hasUserLocation, userHomeProvince, locations.selectedProvince, locations.selectedMunicipality])
+
+  // Centro de búsqueda y zoom según la intención del usuario
   const { searchCenter, targetZoom } = useMemo(() => {
     if (isNationwide) {
       return {
@@ -110,6 +129,7 @@ export default function App() {
       }
     }
 
+    // 1. Municipio seleccionado
     if (locations.selectedMunicipality !== null) {
       const s = stations.find(
         (st) => st.municipalityId === locations.selectedMunicipality,
@@ -122,15 +142,15 @@ export default function App() {
       }
     }
 
-    // Si tenemos la ubicación exacta del usuario, anclamos el radio directamente en sus coordenadas
-    if (hasUserLocation) {
+    // 2. Modo "Cerca de mí": anclado al GPS del usuario
+    if (isUserNearby && geo.coords) {
       return {
         searchCenter: geo.coords,
-        targetZoom: 11,
+        targetZoom: 12,
       }
     }
 
-    // Fallback: Centroide de la provincia seleccionada
+    // 3. Modo "Explorar Provincia": centrado en la capital / centroide de esa provincia
     const provinceName = locations.provinces.find(
       (p) => p.id === locations.selectedProvince,
     )?.name
@@ -138,22 +158,30 @@ export default function App() {
     if (provinceName && PROVINCE_CENTERS[provinceName]) {
       return {
         searchCenter: PROVINCE_CENTERS[provinceName],
-        targetZoom: 9,
+        targetZoom: 10,
+      }
+    }
+
+    if (hasUserLocation && geo.coords) {
+      return {
+        searchCenter: geo.coords,
+        targetZoom: 11,
       }
     }
 
     return {
-      searchCenter: geo.coords,
-      targetZoom: 10,
+      searchCenter: { lat: 40.4168, lng: -3.7038 },
+      targetZoom: 6,
     }
   }, [
     isNationwide,
-    locations.selectedProvince,
     locations.selectedMunicipality,
+    locations.selectedProvince,
     locations.provinces,
     stations,
-    hasUserLocation,
+    isUserNearby,
     geo.coords,
+    hasUserLocation,
   ])
 
   const handleProvinceChange = useCallback(
@@ -182,6 +210,15 @@ export default function App() {
     [],
   )
 
+  const handleLocateMe = useCallback(() => {
+    if (!geo.coords) return
+    if (userHomeProvince) {
+      locations.selectProvince(userHomeProvince.id)
+      locations.setSelectedMunicipality(null)
+    }
+    setFlyCounter((n) => n + 1)
+  }, [geo.coords, userHomeProvince, locations])
+
   const nearby = useNearbyStations(
     stations,
     searchCenter,
@@ -190,8 +227,10 @@ export default function App() {
     isNationwide,
   )
 
-  // Medias nacionales cargadas siempre
-  const national = useNationalAverage(true)
+  const [nationalPeriod, setNationalPeriod] = useState<'1y' | '5y'>('1y')
+
+  // Medias nacionales cargadas siempre (con soporte de 1 año o 5 años)
+  const national = useNationalAverage(true, nationalPeriod)
 
   const renderHistory = useCallback(
     (s: Station) => (
@@ -216,6 +255,8 @@ export default function App() {
       loadingMunicipalities={locations.loadingMunicipalities}
       selectedProvince={locations.selectedProvince}
       selectedMunicipality={locations.selectedMunicipality}
+      userHomeProvinceId={userHomeProvince?.id}
+      isUserNearby={isUserNearby}
       onProvinceChange={handleProvinceChange}
       onMunicipalityChange={handleMunicipalityChange}
       fuelType={fuelType}
@@ -232,8 +273,13 @@ export default function App() {
     />
   )
 
+  const isInitialLoading = locations.loadingProvinces || (loading && stations.length === 0)
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
+      {/* Pantalla de carga inicial al obtener datos de la API */}
+      <InitialLoadingScreen loading={isInitialLoading} />
+
       <Header
         theme={theme}
         onToggleTheme={toggleTheme}
@@ -285,6 +331,7 @@ export default function App() {
               loadingLocation={geo.loading}
               permissionDenied={geo.permissionDenied}
               onRetryLocation={geo.retry}
+              onLocateMe={handleLocateMe}
               onSelectStation={handleSelectStation}
             />
           </Suspense>
@@ -296,6 +343,8 @@ export default function App() {
               loading={national.loading}
               progress={national.progress}
               isDark={isDark}
+              period={nationalPeriod}
+              onPeriodChange={setNationalPeriod}
             />
           </div>
 
@@ -329,31 +378,17 @@ export default function App() {
         </main>
       </div>
 
-      {/* Modal / Bottom Drawer para Medias Nacionales en Móvil */}
-      {mobileNationalOpen && (
-        <div className="fixed inset-0 z-[1250] flex items-end justify-center bg-slate-950/60 backdrop-blur-sm md:hidden">
-          <div className="relative max-h-[85vh] w-full overflow-y-auto rounded-t-3xl bg-white p-4 shadow-2xl dark:bg-slate-900">
-            <div className="mb-2 flex items-center justify-between border-b border-slate-200/60 pb-2 dark:border-slate-800">
-              <span className="text-xs font-bold text-ink dark:text-white">
-                Medias Nacionales y Evolución
-              </span>
-              <button
-                type="button"
-                onClick={() => setMobileNationalOpen(false)}
-                className="rounded-lg p-1.5 text-ink-soft hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <NationalPriceWidget
-              data={national.data}
-              loading={national.loading}
-              progress={national.progress}
-              isDark={isDark}
-            />
-          </div>
-        </div>
-      )}
+      {/* Modal / Bottom Drawer animado para Medias Nacionales en Móvil */}
+      <NationalMobileModal
+        open={mobileNationalOpen}
+        onClose={() => setMobileNationalOpen(false)}
+        data={national.data}
+        loading={national.loading}
+        progress={national.progress}
+        isDark={isDark}
+        period={nationalPeriod}
+        onPeriodChange={setNationalPeriod}
+      />
 
       <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)}>
         {sidebarContent}

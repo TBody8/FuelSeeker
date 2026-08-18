@@ -1,15 +1,21 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Line } from 'react-chartjs-2'
 import { Activity, ChevronDown, ChevronUp, Fuel, TrendingUp } from 'lucide-react'
+import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
 import type { NationalAverage } from '../../types'
 import { formatPriceCompact, parseApiDate } from '../../utils/format'
 import { baseChartOptions, CHART_COLORS } from './chartConfig'
+
+gsap.registerPlugin(useGSAP)
 
 interface NationalPriceWidgetProps {
   data: NationalAverage[]
   loading: boolean
   progress: number
   isDark: boolean
+  period?: '1y' | '5y'
+  onPeriodChange?: (period: '1y' | '5y') => void
 }
 
 export function NationalPriceWidget({
@@ -17,8 +23,28 @@ export function NationalPriceWidget({
   loading,
   progress,
   isDark,
+  period = '1y',
+  onPeriodChange,
 }: NationalPriceWidgetProps) {
   const [expanded, setExpanded] = useState(false)
+  const chartContainerRef = useRef<HTMLDivElement>(null)
+
+  useGSAP(
+    () => {
+      if (!expanded || !chartContainerRef.current) return
+      const prefersReduced =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (prefersReduced) return
+
+      gsap.fromTo(
+        chartContainerRef.current,
+        { autoAlpha: 0, y: -6, scale: 0.98 },
+        { autoAlpha: 1, y: 0, scale: 1, duration: 0.24, ease: 'power2.out' },
+      )
+    },
+    { dependencies: [expanded], scope: chartContainerRef },
+  )
 
   // Datos ordenados cronológicamente para el gráfico
   const sortedData = [...data].sort(
@@ -45,7 +71,7 @@ export function NationalPriceWidget({
         backgroundColor: CHART_COLORS.gasoline95Soft,
         fill: true,
         tension: 0.35,
-        pointRadius: 2,
+        pointRadius: period === '5y' ? 1.5 : 2,
         pointHoverRadius: 5,
         borderWidth: 2,
       },
@@ -59,7 +85,7 @@ export function NationalPriceWidget({
         backgroundColor: CHART_COLORS.dieselASoft,
         fill: false,
         tension: 0.35,
-        pointRadius: 2,
+        pointRadius: period === '5y' ? 1.5 : 2,
         pointHoverRadius: 5,
         borderWidth: 2,
       },
@@ -152,7 +178,41 @@ export function NationalPriceWidget({
 
       {/* Gráfico expandible */}
       {expanded && (
-        <div className="mt-3 border-t border-slate-200/60 pt-3 dark:border-slate-800">
+        <div
+          ref={chartContainerRef}
+          className="mt-3 border-t border-slate-200/60 pt-3 dark:border-slate-800"
+        >
+          {/* Selector elegante de periodo temporal */}
+          <div className="mb-2.5 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-ink dark:text-slate-200">
+              Evolución de precios
+            </span>
+            <div className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800 text-[10.5px]">
+              <button
+                type="button"
+                onClick={() => onPeriodChange?.('1y')}
+                className={`rounded-md px-2.5 py-0.5 font-bold transition-all duration-150 ${
+                  period === '1y'
+                    ? 'bg-white text-emerald-700 shadow-xs dark:bg-slate-700 dark:text-emerald-400'
+                    : 'text-ink-faint hover:text-ink dark:text-slate-400 dark:hover:text-slate-200'
+                }`}
+              >
+                1 Año
+              </button>
+              <button
+                type="button"
+                onClick={() => onPeriodChange?.('5y')}
+                className={`rounded-md px-2.5 py-0.5 font-bold transition-all duration-150 ${
+                  period === '5y'
+                    ? 'bg-white text-emerald-700 shadow-xs dark:bg-slate-700 dark:text-emerald-400'
+                    : 'text-ink-faint hover:text-ink dark:text-slate-400 dark:hover:text-slate-200'
+                }`}
+              >
+                5 Años
+              </button>
+            </div>
+          </div>
+
           {loading ? (
             <div className="flex h-44 flex-col items-center justify-center gap-2">
               <div className="h-2 w-3/4 max-w-xs overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
@@ -168,10 +228,12 @@ export function NationalPriceWidget({
           ) : data.length > 0 ? (
             <div>
               <div className="h-44">
-                <Line data={chartData} options={baseChartOptions(isDark)} />
+                <Line data={chartData} options={baseChartOptions(isDark, period)} />
               </div>
               <p className="mt-1.5 text-[10px] text-ink-faint dark:text-slate-500">
-                Evolución del último año (muestreo mensual) en todas las E.S. de España.
+                {period === '5y'
+                  ? 'Evolución de los últimos 5 años (muestreo trimestral MITECO).'
+                  : 'Evolución del último año (muestreo mensual MITECO).'}
               </p>
             </div>
           ) : (
@@ -184,3 +246,4 @@ export function NationalPriceWidget({
     </div>
   )
 }
+

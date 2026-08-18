@@ -13,10 +13,11 @@ export const RADIUS_MAX_KM = 50
 export const HISTORICAL_SAMPLES = 26
 export const HISTORICAL_STEP_WEEKS = 2
 export const HISTORICAL_CONCURRENCY = 8
-// La serie nacional usa muestreo mensual: los snapshots nacionales sin
-// comprimir pesan ~4 MB cada uno, por lo que 52 semanas serían inviables.
+// La serie nacional: 1 año (muestreo mensual) o 5 años (muestreo trimestral)
 export const NATIONAL_SAMPLES = 13
 export const NATIONAL_STEP_WEEKS = 4
+export const NATIONAL_5Y_SAMPLES = 21
+export const NATIONAL_5Y_STEP_WEEKS = 12
 
 export const Z_INDEX = {
   base: 0,

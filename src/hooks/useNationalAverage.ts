@@ -4,7 +4,12 @@ import {
   sampleDates,
 } from '../services/historicalService'
 import type { NationalAverage } from '../types'
-import { NATIONAL_SAMPLES, NATIONAL_STEP_WEEKS } from '../utils/constants'
+import {
+  NATIONAL_5Y_SAMPLES,
+  NATIONAL_5Y_STEP_WEEKS,
+  NATIONAL_SAMPLES,
+  NATIONAL_STEP_WEEKS,
+} from '../utils/constants'
 
 interface NationalState {
   data: NationalAverage[]
@@ -13,7 +18,7 @@ interface NationalState {
   error: string | null
 }
 
-export function useNationalAverage(enabled: boolean) {
+export function useNationalAverage(enabled: boolean, period: '1y' | '5y' = '1y') {
   const [state, setState] = useState<NationalState>({
     data: [],
     loading: false,
@@ -22,11 +27,16 @@ export function useNationalAverage(enabled: boolean) {
   })
   const requestId = useRef(0)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (currentPeriod: '1y' | '5y') => {
     const id = ++requestId.current
-    const dates = sampleDates(NATIONAL_SAMPLES, NATIONAL_STEP_WEEKS)
+    const samples =
+      currentPeriod === '5y' ? NATIONAL_5Y_SAMPLES : NATIONAL_SAMPLES
+    const stepWeeks =
+      currentPeriod === '5y' ? NATIONAL_5Y_STEP_WEEKS : NATIONAL_STEP_WEEKS
 
-    setState({ data: [], loading: true, progress: 0, error: null })
+    const dates = sampleDates(samples, stepWeeks)
+
+    setState((prev) => ({ ...prev, loading: true, progress: 0, error: null }))
 
     try {
       const data = await fetchNationalAverages(dates, (done, total) => {
@@ -49,14 +59,14 @@ export function useNationalAverage(enabled: boolean) {
 
   useEffect(() => {
     if (enabled) {
-      void load()
+      void load(period)
     } else {
       requestId.current += 1
     }
     return () => {
       requestId.current += 1
     }
-  }, [enabled, load])
+  }, [enabled, period, load])
 
-  return { ...state, load }
+  return { ...state, load: () => load(period) }
 }

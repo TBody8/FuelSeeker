@@ -34,7 +34,11 @@ export const CHART_COLORS = {
   tick: '#94a3b8',
 } as const
 
-export function baseChartOptions(isDark: boolean): ChartOptions<'line'> {
+export function baseChartOptions(
+  isDark: boolean,
+  period: '1y' | '5y' = '1y',
+): ChartOptions<'line'> {
+  const is5y = period === '5y'
   return {
     responsive: true,
     maintainAspectRatio: false,
@@ -81,11 +85,12 @@ export function baseChartOptions(isDark: boolean): ChartOptions<'line'> {
       x: {
         type: 'time',
         time: {
-          unit: 'month',
+          unit: is5y ? 'year' : 'month',
           displayFormats: {
             month: 'MMM yy',
+            year: 'yyyy',
           },
-          tooltipFormat: "dd 'de' MMM 'de' yyyy",
+          tooltipFormat: "dd 'de' MMMM 'de' yyyy",
         },
         adapters: {
           date: { locale: es },
@@ -95,8 +100,8 @@ export function baseChartOptions(isDark: boolean): ChartOptions<'line'> {
         },
         ticks: {
           color: CHART_COLORS.tick,
-          maxTicksLimit: 8,
-          font: { family: 'Manrope', size: 11 },
+          maxTicksLimit: is5y ? 6 : 8,
+          font: { family: 'Manrope', size: 11, weight: is5y ? 700 : 500 },
         },
       },
       y: {

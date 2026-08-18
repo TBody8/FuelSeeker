@@ -1,8 +1,13 @@
+import { useRef } from 'react'
 import { PackageSearch } from 'lucide-react'
+import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
 import type { FuelType, Station } from '../../types'
 import { haversineKm } from '../../utils/geo'
 import { StationCard } from './StationCard'
 import { StationCardSkeleton } from './StationCardSkeleton'
+
+gsap.registerPlugin(useGSAP)
 
 interface StationListProps {
   stations: Station[]
@@ -27,6 +32,40 @@ export function StationList({
   onSelect,
   renderHistory,
 }: StationListProps) {
+  const listRef = useRef<HTMLUListElement>(null)
+
+  useGSAP(
+    () => {
+      if (loading || error || stations.length === 0 || !listRef.current) return
+
+      const prefersReduced =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+      if (prefersReduced) return
+
+      const items = listRef.current.querySelectorAll('.station-item')
+      if (items.length === 0) return
+
+      // Animamos con stagger solo los primeros 8 elementos visibles para óptimo rendimiento
+      const itemsToAnimate = Array.from(items).slice(0, 8)
+
+      gsap.fromTo(
+        itemsToAnimate,
+        { autoAlpha: 0, y: 12 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.24,
+          stagger: 0.050,
+          ease: 'power2.out',
+          clearProps: 'all',
+        },
+      )
+    },
+    { dependencies: [stations, loading, fuelType], scope: listRef },
+  )
+
   if (loading) {
     return (
       <div className="space-y-2.5" role="status" aria-label="Cargando estaciones">
@@ -61,9 +100,9 @@ export function StationList({
   }
 
   return (
-    <ul className="space-y-2.5">
+    <ul ref={listRef} className="space-y-2.5">
       {stations.map((station, index) => (
-        <li key={station.id} className="animate-fade-up">
+        <li key={station.id} className="station-item">
           <StationCard
             station={station}
             fuelType={fuelType}

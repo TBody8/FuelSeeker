@@ -8,6 +8,7 @@ interface LocationSelectorProps {
   loadingMunicipalities: boolean
   selectedProvince: number | null
   selectedMunicipality: number | null
+  userHomeProvinceId?: number | null
   onProvinceChange: (provinceId: number | null) => void
   onMunicipalityChange: (municipalityId: number | null) => void
 }
@@ -19,6 +20,7 @@ export function LocationSelector({
   loadingMunicipalities,
   selectedProvince,
   selectedMunicipality,
+  userHomeProvinceId,
   onProvinceChange,
   onMunicipalityChange,
 }: LocationSelectorProps) {
@@ -48,11 +50,14 @@ export function LocationSelector({
             ) : (
               <>
                 <option value="">Toda España (Top 5)</option>
-                {provinces.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
+                {provinces.map((p) => {
+                  const isHome = userHomeProvinceId === p.id
+                  return (
+                    <option key={p.id} value={p.id}>
+                      {isHome ? `📍 ${p.name} (Cerca de mí)` : p.name}
+                    </option>
+                  )
+                })}
               </>
             )}
           </select>

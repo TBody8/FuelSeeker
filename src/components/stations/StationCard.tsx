@@ -1,9 +1,14 @@
-import { ChevronDown, ChevronUp, CreditCard, ExternalLink, Navigation } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { ChevronDown, ChevronUp, CreditCard, ExternalLink, Navigation } from 'lucide-react'
+import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
 import type { FuelType, Station } from '../../types'
 import { formatDistance } from '../../utils/geo'
 import { formatPrice, stationMapsUrl } from '../../utils/format'
+import { getStationAffiliation } from '../../utils/stationAffiliations'
 import { Badge } from '../ui/Badge'
+
+gsap.registerPlugin(useGSAP)
 
 interface StationCardProps {
   station: Station
@@ -28,10 +33,9 @@ export function StationCard({
 }: StationCardProps) {
   const [expanded, setExpanded] = useState(false)
   const cardRef = useRef<HTMLElement>(null)
+  const historyRef = useRef<HTMLDivElement>(null)
 
-  const isCostco =
-    station.brand.toUpperCase().includes('COSTCO') ||
-    station.address.toUpperCase().includes('COSTCO')
+  const affiliation = getStationAffiliation(station.brand, station.address)
 
   // Auto-scroll al seleccionar desde el mapa o lista
   useEffect(() => {
@@ -39,6 +43,42 @@ export function StationCard({
       cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
   }, [selected])
+
+  // Micro-feedback táctil GSAP al seleccionar
+  useGSAP(
+    () => {
+      if (!selected || !cardRef.current) return
+      const prefersReduced =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (prefersReduced) return
+
+      gsap.fromTo(
+        cardRef.current,
+        { scale: 0.985 },
+        { scale: 1, duration: 0.22, ease: 'back.out(1.5)' },
+      )
+    },
+    { dependencies: [selected], scope: cardRef },
+  )
+
+  // Animación de despliegue suave del histórico
+  useGSAP(
+    () => {
+      if (!expanded || !historyRef.current) return
+      const prefersReduced =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (prefersReduced) return
+
+      gsap.fromTo(
+        historyRef.current,
+        { autoAlpha: 0, y: 8 },
+        { autoAlpha: 1, y: 0, duration: 0.22, ease: 'power2.out' },
+      )
+    },
+    { dependencies: [expanded], scope: historyRef },
+  )
 
   const price =
     fuelType === 'gasoline95' ? station.priceGasoline95 : station.priceDieselA
@@ -80,10 +120,12 @@ export function StationCard({
                 Más barata
               </Badge>
             )}
-            {isCostco && (
-              <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">
+            {affiliation && (
+              <span
+                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold ${affiliation.badgeClass}`}
+              >
                 <CreditCard size={10} />
-                Solo Socios Costco
+                {affiliation.badgeText}
               </span>
             )}
           </div>
@@ -122,9 +164,9 @@ export function StationCard({
         </div>
       </div>
 
-      {isCostco && (
-        <div className="mt-1.5 text-[10px] text-amber-700/90 dark:text-amber-300/90">
-          * Tarifa exclusiva para miembros con suscripción activa a Costco
+      {affiliation && (
+        <div className={`mt-1.5 text-[10px] leading-tight ${affiliation.textClass}`}>
+          {affiliation.note}
         </div>
       )}
 
@@ -150,7 +192,15 @@ export function StationCard({
         </button>
       </div>
 
-      {expanded ? <div className="mt-2.5" onClick={(e) => e.stopPropagation()}>{children}</div> : null}
+      {expanded ? (
+        <div
+          ref={historyRef}
+          className="mt-2.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {children}
+        </div>
+      ) : null}
     </article>
   )
 }
