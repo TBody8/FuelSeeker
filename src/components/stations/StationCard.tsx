@@ -99,7 +99,6 @@ export function StationCard({
 
   const handleExpand = () => {
     setExpanded((prev) => !prev)
-    onSelect(station)
   }
 
   return (

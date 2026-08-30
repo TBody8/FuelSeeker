@@ -205,7 +205,7 @@ export default function App() {
   const handleSelectStation = useCallback(
     (station: Station) => {
       setSelectedStationId(station.id)
-      setMobileOpen(true)
+      setMobileOpen(false)
     },
     [],
   )
