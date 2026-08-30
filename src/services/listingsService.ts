@@ -1,12 +1,6 @@
 import { fetchJson } from './api'
 import type { Municipality, Province } from '../types'
-
-interface ProvinceRaw {
-  IDPovincia: string
-  IDCCAA: string
-  Provincia: string
-  CCAA: string
-}
+import { OFFICIAL_PROVINCES } from '../utils/provincesData'
 
 interface MunicipalityRaw {
   IDMunicipio: string
@@ -15,31 +9,29 @@ interface MunicipalityRaw {
   Provincia: string
 }
 
-const provincesCache: Province[] | null = null
 const municipalitiesByProvince = new Map<number, Municipality[]>()
 
-function parseProvince(raw: ProvinceRaw): Province {
-  return {
-    id: Number.parseInt(raw['IDPovincia'], 10) || 0,
-    name: raw['Provincia'],
-    ccaaId: Number.parseInt(raw['IDCCAA'], 10) || 0,
-    ccaaName: raw['CCAA'],
-  }
-}
-
 export async function fetchProvinces(): Promise<Province[]> {
-  if (provincesCache) return provincesCache
-
-  const raw = await fetchJson<ProvinceRaw[]>(`/Listados/Provincias/`)
-  const provinces = raw.map(parseProvince)
-  return provinces
+  // Catálogo estático oficial: 0ms de red, respuesta instantánea
+  return OFFICIAL_PROVINCES
 }
 
 export async function fetchMunicipalitiesByProvince(
   provinceId: number,
 ): Promise<Municipality[]> {
-  const cached = municipalitiesByProvince.get(provinceId)
-  if (cached) return cached
+  const mem = municipalitiesByProvince.get(provinceId)
+  if (mem) return mem
+
+  try {
+    const rawCache = localStorage.getItem(`gasolineras:mun_${provinceId}`)
+    if (rawCache) {
+      const parsed = JSON.parse(rawCache) as Municipality[]
+      municipalitiesByProvince.set(provinceId, parsed)
+      return parsed
+    }
+  } catch {
+    // fallback
+  }
 
   const raw = await fetchJson<MunicipalityRaw[]>(
     `/Listados/MunicipiosPorProvincia/${provinceId}`,
@@ -50,6 +42,16 @@ export async function fetchMunicipalitiesByProvince(
     provinceId: Number.parseInt(r['IDProvincia'], 10) || 0,
     provinceName: r['Provincia'],
   }))
+
   municipalitiesByProvince.set(provinceId, municipalities)
+  try {
+    localStorage.setItem(
+      `gasolineras:mun_${provinceId}`,
+      JSON.stringify(municipalities),
+    )
+  } catch {
+    // ignore
+  }
+
   return municipalities
 }

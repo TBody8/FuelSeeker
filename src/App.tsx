@@ -228,9 +228,11 @@ export default function App() {
   )
 
   const [nationalPeriod, setNationalPeriod] = useState<'1y' | '5y'>('1y')
+  const [desktopNationalExpanded, setDesktopNationalExpanded] = useState(false)
 
-  // Medias nacionales cargadas siempre (con soporte de 1 año o 5 años)
-  const national = useNationalAverage(true, nationalPeriod)
+  // Medias nacionales cargadas BAJO DEMANDA (solo cuando el usuario abre el gráfico)
+  const shouldLoadNational = desktopNationalExpanded || mobileNationalOpen
+  const national = useNationalAverage(shouldLoadNational, nationalPeriod)
 
   const renderHistory = useCallback(
     (s: Station) => (
@@ -273,7 +275,8 @@ export default function App() {
     />
   )
 
-  const isInitialLoading = locations.loadingProvinces || (loading && stations.length === 0)
+  // Solo se muestra splash inicial si NO hay estaciones en memoria ni caché local
+  const isInitialLoading = stations.length === 0 && loading
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
@@ -345,6 +348,8 @@ export default function App() {
               isDark={isDark}
               period={nationalPeriod}
               onPeriodChange={setNationalPeriod}
+              expanded={desktopNationalExpanded}
+              onToggleExpanded={() => setDesktopNationalExpanded((prev) => !prev)}
             />
           </div>
 

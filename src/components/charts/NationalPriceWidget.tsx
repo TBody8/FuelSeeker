@@ -16,6 +16,8 @@ interface NationalPriceWidgetProps {
   isDark: boolean
   period?: '1y' | '5y'
   onPeriodChange?: (period: '1y' | '5y') => void
+  expanded?: boolean
+  onToggleExpanded?: () => void
 }
 
 export function NationalPriceWidget({
@@ -25,13 +27,17 @@ export function NationalPriceWidget({
   isDark,
   period = '1y',
   onPeriodChange,
+  expanded: controlledExpanded,
+  onToggleExpanded,
 }: NationalPriceWidgetProps) {
-  const [expanded, setExpanded] = useState(false)
+  const [internalExpanded, setInternalExpanded] = useState(false)
+  const isExpanded = controlledExpanded !== undefined ? controlledExpanded : internalExpanded
+  const handleToggle = onToggleExpanded ?? (() => setInternalExpanded((prev) => !prev))
   const chartContainerRef = useRef<HTMLDivElement>(null)
 
   useGSAP(
     () => {
-      if (!expanded || !chartContainerRef.current) return
+      if (!isExpanded || !chartContainerRef.current) return
       const prefersReduced =
         typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -43,7 +49,7 @@ export function NationalPriceWidget({
         { autoAlpha: 1, y: 0, scale: 1, duration: 0.24, ease: 'power2.out' },
       )
     },
-    { dependencies: [expanded], scope: chartContainerRef },
+    { dependencies: [isExpanded], scope: chartContainerRef },
   )
 
   // Datos ordenados cronológicamente para el gráfico
@@ -112,13 +118,13 @@ export function NationalPriceWidget({
 
         <button
           type="button"
-          onClick={() => setExpanded(!expanded)}
-          aria-expanded={expanded}
-          aria-label={expanded ? 'Ocultar gráfico nacional' : 'Ver gráfico nacional'}
+          onClick={handleToggle}
+          aria-expanded={isExpanded}
+          aria-label={isExpanded ? 'Ocultar gráfico nacional' : 'Ver gráfico nacional'}
           className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-ink-soft transition-colors duration-150 hover:bg-slate-100 hover:text-ink dark:text-slate-300 dark:hover:bg-slate-800"
         >
-          <span>{expanded ? 'Minimizar' : 'Ver gráfico'}</span>
-          {expanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          <span>{isExpanded ? 'Minimizar' : 'Ver gráfico'}</span>
+          {isExpanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
         </button>
       </div>
 
@@ -177,7 +183,7 @@ export function NationalPriceWidget({
       </div>
 
       {/* Gráfico expandible */}
-      {expanded && (
+      {isExpanded && (
         <div
           ref={chartContainerRef}
           className="mt-3 border-t border-slate-200/60 pt-3 dark:border-slate-800"

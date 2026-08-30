@@ -4,6 +4,7 @@ import {
   fetchProvinces,
 } from '../services/listingsService'
 import type { Municipality, Province } from '../types'
+import { OFFICIAL_PROVINCES } from '../utils/provincesData'
 
 interface LocationsState {
   provinces: Province[]
@@ -15,9 +16,9 @@ interface LocationsState {
 
 export function useLocations() {
   const [state, setState] = useState<LocationsState>({
-    provinces: [],
+    provinces: OFFICIAL_PROVINCES,
     municipalities: [],
-    loadingProvinces: true,
+    loadingProvinces: false,
     loadingMunicipalities: false,
     error: null,
   })

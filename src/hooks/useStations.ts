@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   fetchStationsByProvince,
   fetchStationsNationwide,
+  getCachedStationsSync,
 } from '../services/stationsService'
 import type { Station } from '../types'
 
@@ -12,10 +13,13 @@ interface StationsState {
 }
 
 export function useStations(provinceId: number | null) {
-  const [state, setState] = useState<StationsState>({
-    stations: [],
-    loading: false,
-    error: null,
+  const [state, setState] = useState<StationsState>(() => {
+    const cached = getCachedStationsSync(provinceId)
+    return {
+      stations: cached ? cached.data : [],
+      loading: cached ? !cached.isFresh : false,
+      error: null,
+    }
   })
 
   const [lastLoadedProvince, setLastLoadedProvince] = useState<number | null | undefined>(undefined)
@@ -23,13 +27,33 @@ export function useStations(provinceId: number | null) {
   useEffect(() => {
     if (provinceId === lastLoadedProvince) return
 
-    setState({ stations: [], loading: true, error: null })
+    const cached = getCachedStationsSync(provinceId)
+    if (cached) {
+      setState({
+        stations: cached.data,
+        loading: !cached.isFresh,
+        error: null,
+      })
+    } else {
+      setState({
+        stations: [],
+        loading: true,
+        error: null,
+      })
+    }
 
     let cancelled = false
+
+    const handleBackgroundUpdate = (freshStations: Station[]) => {
+      if (cancelled) return
+      setState({ stations: freshStations, loading: false, error: null })
+      setLastLoadedProvince(provinceId)
+    }
+
     const promise =
       provinceId === null
         ? fetchStationsNationwide()
-        : fetchStationsByProvince(provinceId)
+        : fetchStationsByProvince(provinceId, handleBackgroundUpdate)
 
     void promise
       .then((stations) => {
@@ -39,11 +63,12 @@ export function useStations(provinceId: number | null) {
       })
       .catch(() => {
         if (cancelled) return
-        setState({
-          stations: [],
+        // Si ya teníamos estaciones cacheadas, no borramos la pantalla
+        setState((prev) => ({
+          ...prev,
           loading: false,
-          error: 'No se pudieron cargar las estaciones de servicio.',
-        })
+          error: prev.stations.length === 0 ? 'No se pudieron cargar las estaciones de servicio.' : null,
+        }))
       })
 
     return () => {
