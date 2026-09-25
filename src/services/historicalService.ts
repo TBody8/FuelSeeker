@@ -1,5 +1,6 @@
 import { fetchJsonWithRetry, mapWithConcurrency } from './api'
 import { transformStations, type RawStationShape } from './transformers'
+import { adjustCostcoStations, isCostcoStation } from '../utils/costcoPricing'
 import type { HistoricalStationPoint, NationalAverage, Station } from '../types'
 
 interface ApiResponse {
@@ -89,7 +90,7 @@ export async function fetchStationHistory(
     const res = await fetchJsonWithRetry<ApiResponse>(
       `/EstacionesTerrestresHist/FiltroProvincia/${date}/${station.provinceId}`,
     )
-    const stations = transformStations(res.ListaEESSPrecio)
+    const stations = adjustCostcoStations(transformStations(res.ListaEESSPrecio))
     // Guardar en caché todas las estaciones de la provincia para esta fecha (bulk cache)
     for (const s of stations) {
       const p: HistoricalStationPoint = {
@@ -97,7 +98,8 @@ export async function fetchStationHistory(
         priceGasoline95: s.priceGasoline95,
         priceDieselA: s.priceDieselA,
       }
-      writeCache(cacheKey('hist', String(station.provinceId), s.id, date), p)
+      const v = isCostcoStation(s.brand, s.address, s.id) ? 'hist:member' : 'hist'
+      writeCache(cacheKey(v, String(station.provinceId), s.id, date), p)
       if (s.id === station.id) {
         mapByDate.set(date, p)
       }
@@ -109,7 +111,8 @@ export async function fetchStationHistory(
         priceGasoline95: null,
         priceDieselA: null,
       }
-      writeCache(cacheKey('hist', String(station.provinceId), station.id, date), emptyPoint)
+      const v = isCostcoStation(station.brand, station.address, station.id) ? 'hist:member' : 'hist'
+      writeCache(cacheKey(v, String(station.provinceId), station.id, date), emptyPoint)
       mapByDate.set(date, emptyPoint)
     }
   })
@@ -120,7 +123,8 @@ export async function fetchStationHistory(
 }
 
 function stationCacheKey(station: Station, date: string): string {
-  return cacheKey('hist', String(station.provinceId), station.id, date)
+  const version = isCostcoStation(station.brand, station.address, station.id) ? 'hist:member' : 'hist'
+  return cacheKey(version, String(station.provinceId), station.id, date)
 }
 
 // --- Medias nacionales (serie temporal) ---

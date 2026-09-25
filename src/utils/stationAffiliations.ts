@@ -1,3 +1,5 @@
+import { isCostcoStation } from './costcoPricing'
+
 export interface StationAffiliation {
   type: 'costco' | 'cooperative' | 'bonarea' | 'carrefour' | 'alcampo' | 'leclerc' | 'eroski'
   badgeText: string
@@ -10,13 +12,13 @@ export function getStationAffiliation(brand: string, address: string = ''): Stat
   const b = brand.toUpperCase()
   const a = address.toUpperCase()
 
-  if (b.includes('COSTCO') || a.includes('COSTCO')) {
+  if (isCostcoStation(brand, address)) {
     return {
       type: 'costco',
-      badgeText: 'Solo Socios Costco',
-      note: '* Precio en surtidor exclusivo para miembros con suscripción activa a Costco.',
-      badgeClass: 'bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300',
-      textClass: 'text-amber-700/90 dark:text-amber-300/90',
+      badgeText: 'Tarifa Socio Costco',
+      note: '* Precio de socio garantizado en surtidor (-1 ct/L respecto a la más barata de la zona).',
+      badgeClass: 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300',
+      textClass: 'text-emerald-700/90 dark:text-emerald-300/90',
     }
   }
 

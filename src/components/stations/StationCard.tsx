@@ -150,6 +150,11 @@ export function StationCard({
           >
             {formatPrice(price)}
           </span>
+          {affiliation?.type === 'costco' && (
+            <span className="text-[9.5px] font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
+              Precio socio
+            </span>
+          )}
           <a
             href={stationMapsUrl(station.lat, station.lng)}
             target="_blank"

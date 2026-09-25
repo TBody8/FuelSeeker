@@ -1,5 +1,6 @@
 import { fetchJsonWithRetry } from './api'
 import { transformStations, type RawStationShape } from './transformers'
+import { adjustCostcoStations } from '../utils/costcoPricing'
 import type { Station } from '../types'
 
 // Envoltorio de la respuesta del MITECO.
@@ -55,9 +56,10 @@ export function getCachedStationsSync(provinceId: number | null): {
     }
     const stored = getStoredEntry('nationwide')
     if (stored) {
-      nationwideCache = stored
+      const adjusted = adjustCostcoStations(stored.data)
+      nationwideCache = { timestamp: stored.timestamp, data: adjusted }
       return {
-        data: stored.data,
+        data: adjusted,
         isFresh: Date.now() - stored.timestamp < CACHE_FRESH_MS,
       }
     }
@@ -74,9 +76,10 @@ export function getCachedStationsSync(provinceId: number | null): {
 
   const stored = getStoredEntry(`prov_${provinceId}`)
   if (stored) {
-    provinceCache.set(provinceId, stored)
+    const adjusted = adjustCostcoStations(stored.data)
+    provinceCache.set(provinceId, { timestamp: stored.timestamp, data: adjusted })
     return {
-      data: stored.data,
+      data: adjusted,
       isFresh: Date.now() - stored.timestamp < CACHE_FRESH_MS,
     }
   }
@@ -100,7 +103,7 @@ export async function fetchStationsByProvince(
     const res = await fetchJsonWithRetry<ApiResponse>(
       `/EstacionesTerrestres/FiltroProvincia/${provinceId}`,
     )
-    const stations = transformStations(res.ListaEESSPrecio)
+    const stations = adjustCostcoStations(transformStations(res.ListaEESSPrecio))
     const entry = { timestamp: Date.now(), data: stations }
     provinceCache.set(provinceId, entry)
     storeEntry(`prov_${provinceId}`, stations)
@@ -126,13 +129,13 @@ export async function fetchStationsByMunicipality(
 ): Promise<Station[]> {
   const stored = getStoredEntry(`mun_${municipalityId}`)
   if (stored && Date.now() - stored.timestamp < CACHE_FRESH_MS) {
-    return stored.data
+    return adjustCostcoStations(stored.data)
   }
 
   const res = await fetchJsonWithRetry<ApiResponse>(
     `/EstacionesTerrestres/FiltroMunicipio/${municipalityId}`,
   )
-  const stations = transformStations(res.ListaEESSPrecio)
+  const stations = adjustCostcoStations(transformStations(res.ListaEESSPrecio))
   storeEntry(`mun_${municipalityId}`, stations)
   return stations
 }
@@ -142,7 +145,7 @@ export async function fetchStationsNationwide(): Promise<Station[]> {
   if (cached?.isFresh) return cached.data
 
   const res = await fetchJsonWithRetry<ApiResponse>('/EstacionesTerrestres/')
-  const stations = transformStations(res.ListaEESSPrecio)
+  const stations = adjustCostcoStations(transformStations(res.ListaEESSPrecio))
   const entry = { timestamp: Date.now(), data: stations }
   nationwideCache = entry
   storeEntry('nationwide', stations)

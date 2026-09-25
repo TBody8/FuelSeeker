@@ -5,6 +5,7 @@ import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import type { HistoricalStationPoint, Station } from '../../types'
 import { parseApiDate } from '../../utils/format'
+import { isCostcoStation } from '../../utils/costcoPricing'
 import { baseChartCompact, CHART_COLORS } from './chartConfig'
 
 gsap.registerPlugin(useGSAP)
@@ -126,6 +127,11 @@ export function HistoricalChart({
     <div ref={chartWrapperRef}>
       <p className="mb-2 text-[11px] font-semibold text-ink-soft dark:text-slate-400">
         Evolución del precio · {station.brand} · {station.municipality}
+        {isCostcoStation(station.brand, station.address, station.id) && (
+          <span className="ml-1.5 inline-flex items-center rounded bg-emerald-500/10 px-1 py-0.2 text-[10px] font-bold text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+            Tarifa Socio
+          </span>
+        )}
       </p>
       <div className="h-44">
         <Line data={chartData} options={baseChartCompact(isDark)} />

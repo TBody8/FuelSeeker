@@ -94,7 +94,11 @@ export function StationCluster({
         <div style="min-width: 160px;">
           ${
             affiliation
-              ? `<span style="display:inline-block;font-size:10px;font-weight:700;background:rgba(217,119,6,0.18);color:#d97706;padding:2px 6px;border-radius:4px;margin-bottom:4px;">💳 ${escapeHtml(affiliation.badgeText)}</span>`
+              ? `<span style="display:inline-block;font-size:10px;font-weight:700;background:${
+                  affiliation.type === 'costco'
+                    ? 'rgba(5,150,105,0.18);color:#059669;'
+                    : 'rgba(217,119,6,0.18);color:#d97706;'
+                }padding:2px 6px;border-radius:4px;margin-bottom:4px;">💳 ${escapeHtml(affiliation.badgeText)}</span>`
               : ''
           }
           <div style="font-weight:700;font-size:13px;">${escapeHtml(station.brand)}</div>
@@ -102,7 +106,9 @@ export function StationCluster({
           <div style="font-size:15px;font-weight:800;margin-top:6px;font-variant-numeric:tabular-nums;color:var(--color-accent);">${formattedPrice}/L</div>
           ${
             affiliation
-              ? `<div style="font-size:10px;opacity:0.8;margin-top:2px;color:#d97706;">${escapeHtml(affiliation.note)}</div>`
+              ? `<div style="font-size:10px;opacity:0.8;margin-top:2px;color:${
+                  affiliation.type === 'costco' ? '#059669;' : '#d97706;'
+                }">${escapeHtml(affiliation.note)}</div>`
               : ''
           }
         </div>
